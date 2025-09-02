@@ -1,0 +1,184 @@
+"""
+Temperature Analysis System for Australian Climate Data
+Processes monthly temperature data from CSV files and performs seasonal analysis,
+temperature range calculations, and stability assessments.
+"""
+
+import os
+import pandas as pd
+import numpy as np
+from glob import glob
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+
+DATA_FOLDER = "temperatures"  # Directory containing temperature CSV files
+
+# Output files for analysis results
+SEASONAL_AVG_FILE = "average_temp.txt"
+LARGEST_RANGE_FILE = "largest_temp_range_station.txt"
+STABILITY_FILE = "temperature_stability_stations.txt"
+
+# Australian seasons mapping
+SEASONS = {
+    "Summer": ["December", "January", "February"],
+    "Autumn": ["March", "April", "May"],
+    "Winter": ["June", "July", "August"],
+    "Spring": ["September", "October", "November"]
+}
+
+# Map individual months to seasons
+MONTH_TO_SEASON = {month: season for season, months in SEASONS.items() for month in months}
+
+# Required columns in each CSV file
+REQUIRED_COLUMNS = ['STATION_NAME'] + list(MONTH_TO_SEASON.keys())
+
+# =============================================================================
+# DATA PROCESSING FUNCTIONS
+# =============================================================================
+
+def load_all_data(folder_path):
+    """
+    Load and combine all temperature CSV files from specified directory.
+    Returns combined DataFrame in long format with Year extracted from filenames.
+    """
+    all_files = glob(os.path.join(folder_path, "*.csv"))
+    if not all_files:
+        raise FileNotFoundError(f"No CSV files found in: {folder_path}")
+    
+    print(f"Found {len(all_files)} CSV files for processing")
+    
+    all_data = []
+    for file_path in all_files:
+        try:
+            df = pd.read_csv(file_path)
+            filename = os.path.basename(file_path)
+            
+            # Skip files missing required columns
+            if not all(col in df.columns for col in REQUIRED_COLUMNS):
+                print(f"Skipping '{filename}' - missing required columns")
+                continue
+            
+            # Transform from wide to long format (months as rows)
+            melted_df = df.melt(
+                id_vars=['STATION_NAME', 'STN_ID', 'LAT', 'LON'],
+                value_vars=list(MONTH_TO_SEASON.keys()),
+                var_name='Month',
+                value_name='Temperature'
+            )
+            
+            # Extract year from filename (assumes format: stations_group_YYYY.csv)
+            year = filename.split('_')[-1].replace('.csv', '')
+            melted_df['Year'] = year
+            
+            # Remove rows with missing temperature values
+            melted_df = melted_df.dropna(subset=['Temperature'])
+            all_data.append(melted_df)
+            print(f"Processed: {filename} ({len(melted_df)} records)")
+            
+        except Exception as e:
+            print(f"Error processing '{os.path.basename(file_path)}': {str(e)}")
+            continue
+    
+    if not all_data:
+        raise ValueError("No valid CSV files could be processed")
+    
+    # Combine all data into single DataFrame
+    combined_df = pd.concat(all_data, ignore_index=True)
+    
+    # Print summary statistics
+    print(f"\nData Summary:")
+    print(f"- Total records: {len(combined_df):,}")
+    print(f"- Unique stations: {combined_df['STATION_NAME'].nunique()}")
+    print(f"- Data range: {combined_df['Year'].min()} - {combined_df['Year'].max()}")
+    
+    return combined_df
+
+def calculate_seasonal_average(df):
+    """Calculate and save seasonal average temperatures across all stations and years."""
+    print("\nCalculating seasonal averages...")
+    
+    # Map months to seasons and calculate averages
+    df['Season'] = df['Month'].map(MONTH_TO_SEASON)
+    seasonal_avg = df.groupby('Season')['Temperature'].mean().round(1)
+    
+    # Write results to file
+    with open(SEASONAL_AVG_FILE, "w") as f:
+        f.write("AUSTRALIAN SEASONAL TEMPERATURE AVERAGES\n")
+        f.write("========================================\n\n")
+        f.write("Seasonal average temperatures across all stations and years:\n\n")
+        
+        for season, avg_temp in seasonal_avg.items():
+            f.write(f"{season:>8}: {avg_temp:6.1f}°C\n")
+            print(f"  {season}: {avg_temp:.1f}°C")
+        
+        f.write(f"\nGenerated: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Total records: {len(df):,}\n")
+    
+    print(f"Seasonal averages saved to: {SEASONAL_AVG_FILE}")
+
+def find_largest_temperature_range(df):
+    """Identify stations with the largest annual temperature range."""
+    print("\nFinding stations with largest temperature ranges...")
+    
+    # Calculate min, max, and range for each station
+    station_stats = df.groupby('STATION_NAME')['Temperature'].agg([
+        ('min_temp', 'min'),
+        ('max_temp', 'max'),
+        ('range', lambda x: x.max() - x.min())
+    ]).round(1)
+    
+    # Find maximum range and corresponding stations
+    max_range = station_stats['range'].max()
+    max_range_stations = station_stats[station_stats['range'] == max_range]
+    
+    # Write results to file
+    with open(LARGEST_RANGE_FILE, "w") as f:
+        f.write("STATIONS WITH LARGEST TEMPERATURE RANGES\n")
+        f.write("========================================\n\n")
+        
+        for station, stats in max_range_stations.iterrows():
+            f.write(f"Station: {station}\n")
+            f.write(f"  Temperature Range: {stats['range']:.1f}°C\n")
+            f.write(f"  Max Temp: {stats['max_temp']:.1f}°C, Min Temp: {stats['min_temp']:.1f}°C\n\n")
+        
+        f.write(f"Total stations analyzed: {len(station_stats):,}\n")
+        f.write(f"Maximum range: {max_range:.1f}°C\n")
+    
+    print(f"Maximum temperature range: {max_range:.1f}°C")
+    print(f"Stations with maximum range: {len(max_range_stations)}")
+    print(f"Results saved to: {LARGEST_RANGE_FILE}")
+
+def find_temperature_stability(df):
+    """Analyze temperature stability by calculating standard deviation for each station."""
+    print("\nAnalyzing temperature stability...")
+    
+    # Calculate standard deviation for each station
+    station_std = df.groupby('STATION_NAME')['Temperature'].std().round(2)
+    
+    # Find most stable and variable stations
+    min_std, max_std = station_std.min(), station_std.max()
+    most_stable = station_std[station_std == min_std]
+    most_variable = station_std[station_std == max_std]
+    
+    # Write results to file
+    with open(STABILITY_FILE, "w") as f:
+        f.write("TEMPERATURE STABILITY ANALYSIS\n")
+        f.write("=============================\n\n")
+        
+        f.write("MOST STABLE STATIONS (Lowest Variation):\n")
+        f.write("---------------------------------------\n")
+        for station, std_dev in most_stable.items():
+            f.write(f"Station: {station} (StdDev: {std_dev:.2f}°C)\n")
+        
+        f.write("\nMOST VARIABLE STATIONS (Highest Variation):\n")
+        f.write("------------------------------------------\n")
+        for station, std_dev in most_variable.items():
+            f.write(f"Station: {station} (StdDev: {std_dev:.2f}°C)\n")
+        
+        f.write(f"\nTotal stations analyzed: {len(station_std):,}\n")
+    
+    print(f"Most stable stations: {len(most_stable)} (stddev: {min_std:.2f}°C)")
+    print(f"Most variable stations: {len(most_variable)} (stddev: {max_std:.2f}°C)")
+    print(f"Results saved to: {STABILITY_FILE}")
