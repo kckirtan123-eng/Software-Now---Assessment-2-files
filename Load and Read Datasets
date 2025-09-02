@@ -182,3 +182,49 @@ def find_temperature_stability(df):
     print(f"Most stable stations: {len(most_stable)} (stddev: {min_std:.2f}°C)")
     print(f"Most variable stations: {len(most_variable)} (stddev: {max_std:.2f}°C)")
     print(f"Results saved to: {STABILITY_FILE}")
+
+def validate_data_quality(df):
+    """Perform basic data quality checks on the loaded dataset."""
+    print("\nData Quality Check:")
+    print(f"- Missing temperature values: {df['Temperature'].isna().sum()}")
+    print(f"- Temperature range: {df['Temperature'].min():.1f}°C to {df['Temperature'].max():.1f}°C")
+    print(f"- Unique stations: {df['STATION_NAME'].nunique()}")
+    print(f"- Years covered: {df['Year'].nunique()} ({df['Year'].min()} - {df['Year'].max()})")
+
+# =============================================================================
+# MAIN EXECUTION
+# =============================================================================
+
+def main():
+    """Main function to execute the complete temperature analysis workflow."""
+    print("=" * 50)
+    print("AUSTRALIAN TEMPERATURE ANALYSIS SYSTEM")
+    print("=" * 50)
+    
+    try:
+        # Load and validate data
+        df = load_all_data(DATA_FOLDER)
+        validate_data_quality(df)
+        
+        # Perform analyses
+        calculate_seasonal_average(df)
+        find_largest_temperature_range(df)
+        find_temperature_stability(df)
+        
+        # Summary
+        print("\n" + "=" * 50)
+        print("ANALYSIS COMPLETE!")
+        print("Results saved to:")
+        print(f"  - {SEASONAL_AVG_FILE} (Seasonal averages)")
+        print(f"  - {LARGEST_RANGE_FILE} (Temperature ranges)")
+        print(f"  - {STABILITY_FILE} (Stability analysis)")
+        
+    except Exception as e:
+        print(f"\nERROR: {str(e)}")
+        print("Please ensure:")
+        print("1. Data folder exists with CSV files")
+        print("2. Files have required columns: STATION_NAME + months")
+        raise
+
+if __name__ == "__main__":
+    main()
