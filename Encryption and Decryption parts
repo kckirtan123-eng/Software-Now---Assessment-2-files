@@ -1,0 +1,128 @@
+"""
+Advanced Encryption/Decryption System
+Secure text encryption with perfect decryption guarantees
+"""
+
+import logging
+from datetime import datetime
+import sys
+
+# Configuration - File paths for input, encrypted, decrypted text and logs
+RAW_FILE = "raw_text.txt"      # Original text file
+ENC_FILE = "encrypted_text.txt"  # Encrypted output file
+DEC_FILE = "decrypted_text.txt"  # Decrypted output file
+LOG_FILE = "encryption_system.log"  # Log file for tracking operations
+
+# Character sets for the encryption algorithm
+# Split alphabet into two halves for different encryption treatments
+LOWER_FIRST = 'abcdefghijklm'    # First half of lowercase alphabet
+LOWER_SECOND = 'nopqrstuvwxyz'   # Second half of lowercase alphabet
+UPPER_FIRST = 'ABCDEFGHIJKLM'    # First half of uppercase alphabet
+UPPER_SECOND = 'NOPQRSTUVWXYZ'   # Second half of uppercase alphabet
+HALF_SIZE = 13  # Size of each alphabet half (26 letters total)
+
+# Default sample text for demonstration
+DEFAULT_TEXT = "Hello World! This is a sample text for encryption testing.\n" \
+               "abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ\n" \
+               "Numbers: 1234567890\nSpecial characters: !@#$%^&*()_+-=[]{}|;:,.<>?/\n" \
+               "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+
+def setup_logging():
+    """Configure logging to both file and console output"""
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s',
+                        handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()])
+
+class EncryptionError(Exception): 
+    """Custom exception for encryption-related errors"""
+    pass
+
+def validate_shifts(shift1, shift2):
+    """Validate that shift parameters are integers and not both zero"""
+    if not isinstance(shift1, int) or not isinstance(shift2, int):
+        raise EncryptionError("Shift parameters must be integers")
+    if shift1 == 0 and shift2 == 0:
+        raise EncryptionError("Shift parameters cannot both be zero")
+
+def shift_char(char, shift, start_char, direction):
+    """
+    Shift a character within its alphabet half
+    char: character to shift
+    shift: number of positions to shift
+    start_char: starting character of the alphabet segment
+    direction: "forward" or "backward" for encryption/decryption
+    """
+    base = ord(start_char)  # ASCII value of starting character
+    index = ord(char) - base  # Position within the segment
+    
+    # Return unchanged if character not in this segment
+    if not (0 <= index < HALF_SIZE):
+        return char
+    
+    # Normalize shift to be within segment bounds
+    norm_shift = shift % HALF_SIZE
+    
+    # Apply shift based on direction
+    if direction == "forward":
+        new_index = (index + norm_shift) % HALF_SIZE  # Forward shift for encryption
+    else:
+        new_index = (index - norm_shift) % HALF_SIZE  # Backward shift for decryption
+    
+    return chr(base + new_index)  # Convert back to character
+
+def encrypt_char(c, shift1, shift2):
+    """Encrypt a single character using different shift strategies for different character sets"""
+    if c in LOWER_FIRST:
+        return shift_char(c, shift1 * shift2, 'a', "forward")  # Product shift for first half lowercase
+    elif c in LOWER_SECOND:
+        return shift_char(c, shift1 + shift2, 'n', "backward")  # Sum shift for second half lowercase
+    elif c in UPPER_FIRST:
+        return shift_char(c, shift1, 'A', "backward")  # shift1 for first half uppercase
+    elif c in UPPER_SECOND:
+        return shift_char(c, shift2 ** 2, 'N', "forward")  # Squared shift for second half uppercase
+    return c  # Non-alphabetic characters remain unchanged
+
+def decrypt_char(c, shift1, shift2):
+    """Decrypt a single character by reversing the encryption operations"""
+    if c in LOWER_FIRST:
+        return shift_char(c, shift1 * shift2, 'a', "backward")  # Reverse product shift
+    elif c in LOWER_SECOND:
+        return shift_char(c, shift1 + shift2, 'n', "forward")  # Reverse sum shift
+    elif c in UPPER_FIRST:
+        return shift_char(c, shift1, 'A', "forward")  # Reverse shift1
+    elif c in UPPER_SECOND:
+        return shift_char(c, shift2 ** 2, 'N', "backward")  # Reverse squared shift
+    return c  # Non-alphabetic characters remain unchanged
+
+def process_file(input_file, output_file, process_func, shift1, shift2):
+    """
+    Process a file by applying encryption/decryption to each character
+    input_file: source file to read
+    output_file: destination file to write
+    process_func: function to apply to each character (encrypt_char or decrypt_char)
+    shift1, shift2: encryption parameters
+    """
+    try:
+        with open(input_file, 'r', encoding='utf-8') as f:
+            text = f.read()
+        
+        # Process each character in the text
+        result = ''.join(process_func(char, shift1, shift2) for char in text)
+        
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(result)
+        
+        logging.info(f"Processed {input_file} -> {output_file} ({len(text)} chars)")
+        return True, f"Successfully processed {len(text)} characters"
+        
+    except Exception as e:
+        return False, f"Error: {str(e)}"
+
+def create_sample():
+    """Create a sample text file with default content"""
+    try:
+        with open(RAW_FILE, 'w', encoding='utf-8') as f:
+            f.write(DEFAULT_TEXT)
+        logging.info(f"Created sample file: {RAW_FILE}")
+    except:
+        raise EncryptionError("Could not create sample file")
+
