@@ -118,11 +118,10 @@ def process_file(input_file, output_file, process_func, shift1, shift2):
         return False, f"Error: {str(e)}"
 
 def create_sample():
-    """Create a sample text file with default content"""
+    """Create a sample text file with custom content"""
     try:
         with open(RAW_FILE, 'w', encoding='utf-8') as f:
-            f.write(DEFAULT_TEXT)
+            f.write(CUSTOM_TEXT)
         logging.info(f"Created sample file: {RAW_FILE}")
     except:
         raise EncryptionError("Could not create sample file")
-
