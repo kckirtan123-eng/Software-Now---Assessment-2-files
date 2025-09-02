@@ -80,3 +80,49 @@ def encrypt_char(c, shift1, shift2):
     elif c in UPPER_SECOND:
         return shift_char(c, shift2 ** 2, 'N', "forward")  # Squared shift for second half uppercase
     return c  # Non-alphabetic characters remain unchanged
+
+def decrypt_char(c, shift1, shift2):
+    """Decrypt a single character by reversing the encryption operations"""
+    if c in LOWER_FIRST:
+        return shift_char(c, shift1 * shift2, 'a', "backward")  # Reverse product shift
+    elif c in LOWER_SECOND:
+        return shift_char(c, shift1 + shift2, 'n', "forward")  # Reverse sum shift
+    elif c in UPPER_FIRST:
+        return shift_char(c, shift1, 'A', "forward")  # Reverse shift1
+    elif c in UPPER_SECOND:
+        return shift_char(c, shift2 ** 2, 'N', "backward")  # Reverse squared shift
+    return c  # Non-alphabetic characters remain unchanged
+
+def process_file(input_file, output_file, process_func, shift1, shift2):
+    """
+    Process a file by applying encryption/decryption to each character
+    input_file: source file to read
+    output_file: destination file to write
+    process_func: function to apply to each character (encrypt_char or decrypt_char)
+    shift1, shift2: encryption parameters
+    """
+    try:
+        with open(input_file, 'r', encoding='utf-8') as f:
+            text = f.read()
+        
+        # Process each character in the text
+        result = ''.join(process_func(char, shift1, shift2) for char in text)
+        
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(result)
+        
+        logging.info(f"Processed {input_file} -> {output_file} ({len(text)} chars)")
+        return True, f"Successfully processed {len(text)} characters"
+        
+    except Exception as e:
+        return False, f"Error: {str(e)}"
+
+def create_sample():
+    """Create a sample text file with default content"""
+    try:
+        with open(RAW_FILE, 'w', encoding='utf-8') as f:
+            f.write(DEFAULT_TEXT)
+        logging.info(f"Created sample file: {RAW_FILE}")
+    except:
+        raise EncryptionError("Could not create sample file")
+
