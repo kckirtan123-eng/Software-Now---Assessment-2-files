@@ -1,0 +1,96 @@
+"""
+Temperature Analysis System for Australian Climate Data
+Processes monthly temperature data from CSV files and performs seasonal analysis,
+temperature range calculations, and stability assessments.
+"""
+
+import os
+import pandas as pd
+import numpy as np
+from glob import glob
+
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+
+DATA_FOLDER = "temperatures"  # Directory containing temperature CSV files
+
+# Output files for analysis results
+SEASONAL_AVG_FILE = "average_temp.txt"
+LARGEST_RANGE_FILE = "largest_temp_range_station.txt"
+STABILITY_FILE = "temperature_stability_stations.txt"
+
+# Australian seasons mapping
+SEASONS = {
+    "Summer": ["December", "January", "February"],
+    "Autumn": ["March", "April", "May"],
+    "Winter": ["June", "July", "August"],
+    "Spring": ["September", "October", "November"]
+}
+
+# Map individual months to seasons
+MONTH_TO_SEASON = {month: season for season, months in SEASONS.items() for month in months}
+
+# Required columns in each CSV file
+REQUIRED_COLUMNS = ['STATION_NAME'] + list(MONTH_TO_SEASON.keys())
+
+# =============================================================================
+# DATA PROCESSING FUNCTIONS
+# =============================================================================
+
+def load_all_data(folder_path):
+    """
+    Load and combine all temperature CSV files from specified directory.
+    Returns combined DataFrame in long format with Year extracted from filenames.
+    """
+    all_files = glob(os.path.join(folder_path, "*.csv"))
+    if not all_files:
+        raise FileNotFoundError(f"No CSV files found in: {folder_path}")
+    
+    print(f"Found {len(all_files)} CSV files for processing")
+    
+    all_data = []
+    for file_path in all_files:
+        try:
+            df = pd.read_csv(file_path)
+            filename = os.path.basename(file_path)
+            
+            # Skip files missing required columns
+            if not all(col in df.columns for col in REQUIRED_COLUMNS):
+                print(f"Skipping '{filename}' - missing required columns")
+                continue
+            
+            # Transform from wide to long format (months as rows)
+            melted_df = df.melt(
+                id_vars=['STATION_NAME', 'STN_ID', 'LAT', 'LON'],
+                value_vars=list(MONTH_TO_SEASON.keys()),
+                var_name='Month',
+                value_name='Temperature'
+            )
+            
+            # Extract year from filename (assumes format: stations_group_YYYY.csv)
+            year = filename.split('_')[-1].replace('.csv', '')
+            melted_df['Year'] = year
+            
+            # Remove rows with missing temperature values
+            melted_df = melted_df.dropna(subset=['Temperature'])
+            all_data.append(melted_df)
+            print(f"Processed: {filename} ({len(melted_df)} records)")
+            
+        except Exception as e:
+            print(f"Error processing '{os.path.basename(file_path)}': {str(e)}")
+            continue
+    
+    if not all_data:
+        raise ValueError("No valid CSV files could be processed")
+    
+    # Combine all data into single DataFrame
+    combined_df = pd.concat(all_data, ignore_index=True)
+    
+    # Print summary statistics
+    print(f"\nData Summary:")
+    print(f"- Total records: {len(combined_df):,}")
+    print(f"- Unique stations: {combined_df['STATION_NAME'].nunique()}")
+    print(f"- Data range: {combined_df['Year'].min()} - {combined_df['Year'].max()}")
+    
+    return combined_df
