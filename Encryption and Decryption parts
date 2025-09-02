@@ -21,11 +21,10 @@ UPPER_FIRST = 'ABCDEFGHIJKLM'    # First half of uppercase alphabet
 UPPER_SECOND = 'NOPQRSTUVWXYZ'   # Second half of uppercase alphabet
 HALF_SIZE = 13  # Size of each alphabet half (26 letters total)
 
-# Default sample text for demonstration
-DEFAULT_TEXT = "Hello World! This is a sample text for encryption testing.\n" \
-               "abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ\n" \
-               "Numbers: 1234567890\nSpecial characters: !@#$%^&*()_+-=[]{}|;:,.<>?/\n" \
-               "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+# Custom text content for raw_text.txt
+CUSTOM_TEXT = """The quick brown fox jumps over the lazy dog beneath the shady willows. The dog, startled from his peaceful afternoon nap, quickly rises and chases after the mischievous fox. 
+
+<<<Through vibrant meadows and past buzzing beehives they race, disturbing a flock of quails that scatter into the crisp autumn sky.>>> The fox, quite pleased with his clever prank, dashes into his cozy underground den while the dog, now exhausted from the zealous pursuit, returns to his favorite spot under the whispering branches to resume his quiet slumber."""
 
 def setup_logging():
     """Configure logging to both file and console output"""
@@ -125,3 +124,80 @@ def create_sample():
         logging.info(f"Created sample file: {RAW_FILE}")
     except:
         raise EncryptionError("Could not create sample file")
+
+def verify_integrity():
+    """Verify that decrypted text matches original text"""
+    try:
+        with open(RAW_FILE, 'r', encoding='utf-8') as f1, open(DEC_FILE, 'r', encoding='utf-8') as f2:
+            return f1.read() == f2.read(), "Integrity verification completed"
+    except:
+        return False, "Integrity check failed"
+
+class EncryptionSystem:
+    """Main class to manage the encryption/decryption process"""
+    
+    def __init__(self):
+        setup_logging()
+        logging.info("Encryption System started")
+    
+    def get_shifts(self):
+        """Get valid shift values from user input"""
+        while True:
+            try:
+                shift1 = int(input("Enter shift1: ").strip())
+                shift2 = int(input("Enter shift2: ").strip())
+                validate_shifts(shift1, shift2)
+                return shift1, shift2
+            except ValueError:
+                print("Please enter integers")
+            except EncryptionError as e:
+                print(f"Error: {e}")
+    
+    def run_pipeline(self, shift1, shift2):
+        """Execute the complete encryption/decryption pipeline"""
+        logging.info(f"Starting with shifts: ({shift1}, {shift2})")
+        
+        try:
+            create_sample()
+        except:
+            logging.error("File creation failed")
+            raise
+        
+        # Encrypt the file
+        success, msg = process_file(RAW_FILE, ENC_FILE, encrypt_char, shift1, shift2)
+        if not success:
+            raise EncryptionError(msg)
+        
+        # Decrypt the file
+        success, msg = process_file(ENC_FILE, DEC_FILE, decrypt_char, shift1, shift2)
+        if not success:
+            raise EncryptionError(msg)
+        
+        # Verify integrity
+        verified, msg = verify_integrity()
+        print("\n" + "="*50)
+        print("OPERATION COMPLETED SUCCESSFULLY" if verified else "OPERATION COMPLETED WITH ERRORS")
+        print("="*50)
+        print(msg)
+        print(f"Files: {RAW_FILE}, {ENC_FILE}, {DEC_FILE}")
+
+def main():
+    """Main function to run the encryption system"""
+    try:
+        system = EncryptionSystem()
+        print("="*50)
+        print("ENCRYPTION/DECRYPTION SYSTEM")
+        print("="*50)
+        
+        shift1, shift2 = system.get_shifts()
+        system.run_pipeline(shift1, shift2)
+        
+    except EncryptionError as e:
+        print(f"\nError: {e}")
+    except KeyboardInterrupt:
+        print("\nCancelled by user")
+    except Exception as e:
+        print(f"\nUnexpected error: {e}")
+
+if __name__ == "__main__":
+    main()
