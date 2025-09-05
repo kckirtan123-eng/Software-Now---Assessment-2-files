@@ -1,0 +1,48 @@
+"""
+Recursive Geometric Pattern Generator using Turtle Graphics
+This program creates intricate geometric patterns by recursively modifying polygon edges.
+"""
+
+import turtle
+from typing import Final
+
+
+class GeometricPatternGenerator:
+    """A class to generate recursive geometric patterns using turtle graphics."""
+    
+    # Default configuration constants
+    DEFAULT_SIDES: Final[int] = 4
+    DEFAULT_LENGTH: Final[int] = 300
+    DEFAULT_DEPTH: Final[int] = 3
+    DEFAULT_COLOR: Final[str] = "navy"
+    BACKGROUND_COLOR: Final[str] = "white"
+    
+    MIN_SIDES: Final[int] = 3
+    MAX_SIDES: Final[int] = 8
+    MIN_LENGTH: Final[int] = 50
+    MAX_LENGTH: Final[int] = 500
+    MIN_DEPTH: Final[int] = 0
+    MAX_DEPTH: Final[int] = 5
+    
+    def __init__(self):
+        """Initialize the pattern generator with default values."""
+        self.screen = turtle.Screen()
+        self.turtle = turtle.Turtle()
+        self.setup_display()
+        
+    def setup_display(self) -> None:
+        """Configure the display settings."""
+        self.screen.title("Recursive Geometric Pattern Generator")
+        self.screen.bgcolor(self.BACKGROUND_COLOR)
+        self.turtle.hideturtle()
+        self.turtle.speed(0)  # Fastest drawing speed
+        self.turtle.color(self.DEFAULT_COLOR)
+        self.turtle.penup()
+        
+    def get_user_input(self) -> tuple[int, float, int]:
+        """
+        Prompt user for input parameters.
+        
+        Returns:
+            Tuple containing number of sides, side length, and recursion depth
+        """
