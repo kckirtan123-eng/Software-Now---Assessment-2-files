@@ -46,3 +46,80 @@ class GeometricPatternGenerator:
         Returns:
             Tuple containing number of sides, side length, and recursion depth
         """
+
+try:
+            sides = self.screen.numinput(
+                "Polygon Sides", 
+                f"Enter number of sides ({self.MIN_SIDES}-{self.MAX_SIDES}):",
+                default=self.DEFAULT_SIDES,
+                minval=self.MIN_SIDES,
+                maxval=self.MAX_SIDES
+            )
+            
+            side_length = self.screen.numinput(
+                "Side Length", 
+                f"Enter side length ({self.MIN_LENGTH}-{self.MAX_LENGTH}):",
+                default=self.DEFAULT_LENGTH,
+                minval=self.MIN_LENGTH,
+                maxval=self.MAX_LENGTH
+            )
+            
+            depth = self.screen.numinput(
+                "Recursion Depth", 
+                f"Enter recursion depth ({self.MIN_DEPTH}-{self.MAX_DEPTH}):",
+                default=self.DEFAULT_DEPTH,
+                minval=self.MIN_DEPTH,
+                maxval=self.MAX_DEPTH
+            )
+            
+            return int(sides), float(side_length), int(depth)
+            
+        except (TypeError, ValueError):
+            print("Invalid input. Using default values.")
+            return self.DEFAULT_SIDES, self.DEFAULT_LENGTH, self.DEFAULT_DEPTH
+    
+    def draw_koch_segment(self, length: float, depth: int) -> None:
+        """
+        Recursively draw a segment of the geometric pattern.
+        
+        Args:
+            length: Length of the current segment
+            depth: Current recursion depth
+        """
+        if depth == 0:
+            self.turtle.forward(length)
+            return
+            
+        segment_length = length / 3
+        
+        # Draw the four segments with triangular indentation
+        self.draw_koch_segment(segment_length, depth - 1)
+        self.turtle.left(60)
+        self.draw_koch_segment(segment_length, depth - 1)
+        self.turtle.right(120)
+        self.draw_koch_segment(segment_length, depth - 1)
+        self.turtle.left(60)
+        self.draw_koch_segment(segment_length, depth - 1)
+    
+    def draw_koch_polygon(self, sides: int, side_length: float, depth: int) -> None:
+        """
+        Draw a polygon with recursively modified edges.
+        
+        Args:
+            sides: Number of sides of the base polygon
+            side_length: Length of each side
+            depth: Recursion depth
+        """
+        interior_angle = 180 * (sides - 2) / sides
+        turn_angle = 180 - interior_angle
+        
+        # Position the turtle to center the drawing
+        self.turtle.goto(-side_length/2, self.calculate_initial_y(sides, side_length))
+        self.turtle.pendown()
+        
+        # Draw each side of the polygon
+        for _ in range(sides):
+            self.draw_koch_segment(side_length, depth)
+            self.turtle.right(turn_angle)
+            
+        self.turtle.penup()
