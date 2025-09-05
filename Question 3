@@ -123,3 +123,46 @@ try:
             self.turtle.right(turn_angle)
             
         self.turtle.penup()
+    
+    def calculate_initial_y(self, sides: int, side_length: float) -> float:
+        """
+        Calculate the initial Y position to center the polygon.
+        
+        Args:
+            sides: Number of sides of the polygon
+            side_length: Length of each side
+            
+        Returns:
+            Y coordinate for centered positioning
+        """
+        # Approximate centering for regular polygons
+        if sides == 4:  # Square
+            return side_length / 2
+        else:
+            return side_length / 3
+    
+    def generate_pattern(self) -> None:
+        """Main method to generate the geometric pattern."""
+        sides, side_length, depth = self.get_user_input()
+        
+        self.draw_koch_polygon(sides, side_length, depth)
+        
+        # Keep the window open until clicked
+        self.screen.exitonclick()
+    
+    def __del__(self) -> None:
+        """Clean up resources when the object is destroyed."""
+        try:
+            self.screen.bye()
+        except:
+            pass
+
+
+def main() -> None:
+    """Main function to run the geometric pattern generator."""
+    generator = GeometricPatternGenerator()
+    generator.generate_pattern()
+
+
+if __name__ == "__main__":
+    main()
